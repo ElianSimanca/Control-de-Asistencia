@@ -18,6 +18,18 @@ public class Empleado {
 
     private boolean activo = true;
 
+    @ManyToOne
+    @JoinColumn(name = "horario_id")
+    private Horario horario;
+
+    public Horario getHorario() {
+        return horario;
+    }
+
+    public void setHorario(Horario horario) {
+        this.horario = horario;
+    }
+
     public Long getId() {
         return id;
     }

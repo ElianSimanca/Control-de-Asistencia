@@ -18,12 +18,21 @@ public class MarcacionController {
 
     private final MarcacionRepository marcacionRepository;
     private final EmpleadoRepository empleadoRepository;
+    private Integer minutosRetraso = 0;
 
     public MarcacionController(
             MarcacionRepository marcacionRepository,
             EmpleadoRepository empleadoRepository) {
         this.marcacionRepository = marcacionRepository;
         this.empleadoRepository = empleadoRepository;
+    }
+
+    public Integer getMinutosRetraso() {
+        return minutosRetraso;
+    }
+
+    public void setMinutosRetraso(Integer minutosRetraso) {
+        this.minutosRetraso = minutosRetraso;
     }
 
     // Todas las marcaciones

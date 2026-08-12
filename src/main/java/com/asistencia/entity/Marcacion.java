@@ -16,6 +16,9 @@ public class Marcacion {
     @Enumerated(EnumType.STRING)
     private TipoMarcacion tipo;
 
+   
+    private Integer minutosRetraso = 0;
+
     @ManyToOne
     @JoinColumn(name = "empleado_id", nullable = false)
     private Empleado empleado;
@@ -46,5 +49,12 @@ public class Marcacion {
 
     public void setEmpleado(Empleado empleado) {
         this.empleado = empleado;
+    }
+    public Integer getMinutosRetraso() {
+        return minutosRetraso;
+    }
+
+    public void setMinutosRetraso(Integer minutosRetraso) {
+        this.minutosRetraso = minutosRetraso;
     }
 }
