@@ -109,4 +109,16 @@ public class TarjetaController {
             this.empleadoId = empleadoId;
         }
     }
+
+    @DeleteMapping("/{uid}")
+public ResponseEntity<Void> eliminarTarjeta(
+        @PathVariable String uid) {
+
+    return tarjetaRepository.findByUid(uid)
+            .map(tarjeta -> {
+                tarjetaRepository.delete(tarjeta);
+                return ResponseEntity.noContent().<Void>build();
+            })
+            .orElse(ResponseEntity.notFound().build());
+}
 }

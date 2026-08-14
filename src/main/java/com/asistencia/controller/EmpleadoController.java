@@ -88,4 +88,18 @@ public class EmpleadoController {
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
+
+    @PutMapping("/{id}/estado")
+    public ResponseEntity<Empleado> cambiarEstado(@PathVariable Long id) {
+
+        return empleadoRepository.findById(id)
+                .map(empleado -> {
+                    empleado.setActivo(!empleado.isActivo());
+
+                    return ResponseEntity.ok(
+                            empleadoRepository.save(empleado)
+                    );
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
 }

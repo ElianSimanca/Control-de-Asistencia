@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 @RestController
-@RequestMapping("/api/attendance")
+@RequestMapping("/api/marcaciones")
 public class AttendanceController {
 
     private final TarjetaRepository tarjetaRepository;
