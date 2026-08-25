@@ -10,7 +10,9 @@ public class Tarjeta {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(unique = true, nullable = false)
+    // El UID lo obtiene exclusivamente el lector RFID.
+    // No debe modificarse desde el sistema.
+    @Column(unique = true, nullable = false, updatable = false)
     private String uid;
 
     private boolean activa = true;

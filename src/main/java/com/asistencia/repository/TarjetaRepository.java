@@ -11,4 +11,6 @@ public interface TarjetaRepository extends JpaRepository<Tarjeta, Long> {
     Optional<Tarjeta> findByUid(String uid);
 
     List<Tarjeta> findByActiva(boolean activa);
+
+    Optional<Tarjeta> findByEmpleadoId(Long empleadoId);
 }
