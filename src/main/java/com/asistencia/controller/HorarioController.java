@@ -2,6 +2,9 @@ package com.asistencia.controller;
 
 import com.asistencia.entity.Horario;
 import com.asistencia.repository.HorarioRepository;
+
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -53,15 +56,19 @@ public class HorarioController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
-
+    // En tu HorarioController.java
+@DeleteMapping("/{id}")
+public ResponseEntity<?> eliminar(@PathVariable Long id) {
+    try {
         if (!horarioRepository.existsById(id)) {
             return ResponseEntity.notFound().build();
         }
-
         horarioRepository.deleteById(id);
-
         return ResponseEntity.noContent().build();
+    } catch (DataIntegrityViolationException e) {
+        // Devuelve un error 400 (Bad Request) o 409 (Conflict) si está en uso
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body("No se puede eliminar el horario porque está asignado a uno o más empleados.");
     }
+}
 }
