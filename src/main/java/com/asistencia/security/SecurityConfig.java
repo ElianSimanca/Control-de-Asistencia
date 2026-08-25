@@ -43,7 +43,10 @@ public class SecurityConfig {
                 // Login público
                 .requestMatchers("/api/auth/**").permitAll()
 
-                // ESP32
+                // ESP32 - registrar tarjeta detectada
+                .requestMatchers("/api/cards/detect").permitAll()
+
+                // ESP32 - registrar asistencia
                 .requestMatchers("/api/marcaciones/rfid").permitAll()
 
                 // Todo lo demás requiere login
