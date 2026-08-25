@@ -18,7 +18,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
-
 import java.time.ZoneId;
 
 @RestController
@@ -106,11 +105,25 @@ public class MarcacionController {
 
         String uid = request.getUid().trim().toUpperCase();
 
-        // 2. Buscar tarjeta
+        // ==========================================
+        // 2. Buscar tarjeta o REGISTRARLA SI ES NUEVA
+        // ==========================================
         Tarjeta tarjeta = tarjetaRepository.findByUid(uid).orElse(null);
+        
         if (tarjeta == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new RfidResponse(false, "Tarjeta no registrada", null));
+            // Guardamos la tarjeta automáticamente en la base de datos
+            Tarjeta nuevaTarjeta = new Tarjeta();
+            nuevaTarjeta.setUid(uid);
+            nuevaTarjeta.setActiva(true);
+            nuevaTarjeta.setEmpleado(null); // Sin asignar
+            
+            tarjetaRepository.save(nuevaTarjeta);
+
+            // Devolvemos success=true para que el ESP32 pite verde
+            // pero el tipo es "REGISTRO", por lo que NO marca asistencia
+            return ResponseEntity.ok(
+                    new RfidResponse(true, "Tarjeta nueva registrada", "REGISTRO")
+            );
         }
 
         // 3. Verificar tarjeta activa
