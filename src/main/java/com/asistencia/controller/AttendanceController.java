@@ -61,16 +61,12 @@ public class AttendanceController {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Empleado inactivo o no asignado");
             }
 
-            // 2. Fecha/Hora (Separamos los caminos para no romper el ESP32)
-            LocalDateTime horaMarcacion;
+            // 2. Fecha/Hora (Usamos la del ESP32, o la de Colombia)
+            LocalDateTime horaMarcacion = LocalDateTime.now(ZoneId.of("America/Bogota"));
             if (request.getFechaHora() != null) {
-                // Viene de React (con fecha elegida)
                 horaMarcacion = request.getFechaHora()
                         .atZoneSameInstant(ZoneId.of("America/Bogota"))
                         .toLocalDateTime();
-            } else {
-                // Viene del ESP32 (solo UID). Usamos la hora actual directa.
-                horaMarcacion = LocalDateTime.now(ZoneId.of("America/Bogota"));
             }
 
             // 3. Tipo (Si viene de React, usarlo. Si viene de ESP32, calcular)
@@ -78,7 +74,6 @@ public class AttendanceController {
             if (request.getTipo() != null && (request.getTipo().equals("ENTRADA") || request.getTipo().equals("SALIDA"))) {
                 tipo = TipoMarcacion.valueOf(request.getTipo());
             } else {
-                // Lógica original (ESP32)
                 tipo = TipoMarcacion.ENTRADA;
                 var ultimaMarcacion = marcacionRepository.findTopByEmpleadoOrderByFechaHoraDesc(empleado);
                 if (ultimaMarcacion.isPresent() && ultimaMarcacion.get().getTipo() == TipoMarcacion.ENTRADA) {
@@ -91,7 +86,7 @@ public class AttendanceController {
             marcacion.setTipo(tipo);
             marcacion.setFechaHora(horaMarcacion);
 
-            // 4. Lógica de tardanzas (La de tu compañero)
+            // 4. Lógica de tardanzas
             if (tipo == TipoMarcacion.ENTRADA && empleado.getHorario() != null) {
                 LocalTime horaEntrada = empleado.getHorario().getHoraEntrada();
                 Integer tolerancia = empleado.getHorario().getToleranciaMinutos();
@@ -113,8 +108,10 @@ public class AttendanceController {
         } catch (ResponseStatusException e) {
             throw e;
         } catch (Exception e) {
-            System.err.println("Error en marcación: " + e.getMessage());
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error interno del servidor");
+            // ESTO ES CLAVE: Imprimimos el error en el log de Render y respondemos rápido
+            System.err.println("ERROR PROCESANDO RFID: " + e.getMessage());
+            e.printStackTrace();
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error interno");
         }
     }
 }
