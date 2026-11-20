@@ -102,4 +102,12 @@ public class EmpleadoController {
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
+        @DeleteMapping("/limpiar")
+    public ResponseEntity<?> limpiarEmpleados() {
+        // Primero borramos las marcaciones y tarjetas para evitar errores de llave foránea
+        marcacionRepository.deleteAll();
+        tarjetaRepository.deleteAll();
+        empleadoRepository.deleteAll();
+        return ResponseEntity.ok().build();
+    }
 }
