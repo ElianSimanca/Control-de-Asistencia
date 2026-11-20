@@ -208,4 +208,9 @@ public class MarcacionController {
         public String getTipoMarcacion() { return tipoMarcacion; }
         public void setTipoMarcacion(String tipoMarcacion) { this.tipoMarcacion = tipoMarcacion; }
     }
+        @DeleteMapping("/limpiar")
+    public ResponseEntity<?> limpiarMarcaciones() {
+        marcacionRepository.deleteAll();
+        return ResponseEntity.ok().build();
+    }
 }
