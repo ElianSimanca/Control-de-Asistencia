@@ -7,6 +7,7 @@ import com.asistencia.entity.TipoMarcacion;
 import com.asistencia.repository.EmpleadoRepository;
 import com.asistencia.repository.MarcacionRepository;
 import com.asistencia.repository.TarjetaRepository;
+import com.asistencia.dto.MarcacionRequestDTO; // <-- NUEVO IMPORT
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -19,6 +20,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.time.ZoneId;
+import java.time.temporal.ChronoUnit; // <-- NUEVO IMPORT
 
 @RestController
 @RequestMapping("/api/marcaciones")
@@ -87,6 +89,54 @@ public class MarcacionController {
                         inicio,
                         fin
                 );
+    }
+
+    // =========================================================
+    // MARCACIÓN MANUAL (NUEVO ENDPOINT PARA EL FRONTEND)
+    // =========================================================
+    @PostMapping
+    @Transactional
+    public ResponseEntity<?> crearMarcacionManual(@RequestBody MarcacionRequestDTO request) {
+        try {
+            // 1. Buscar empleado
+            Empleado empleado = empleadoRepository.findById(request.getEmpleadoId())
+                    .orElseThrow(() -> new RuntimeException("Empleado no encontrado"));
+
+            // 2. Convertir hora a Colombia
+            ZoneId zonaColombia = ZoneId.of("America/Bogota");
+            LocalDateTime fechaLocal = request.getFechaHora()
+                    .atZoneSameInstant(zonaColombia)
+                    .toLocalDateTime();
+
+            // 3. Convertir el String del frontend ("ENTRADA" o "SALIDA") al Enum de Java
+            TipoMarcacion tipoEnum = TipoMarcacion.valueOf(request.getTipo().toUpperCase());
+
+            // 4. Calcular retraso (Ejemplo: Entrada a las 8:00 AM)
+            int retraso = 0;
+            if (tipoEnum == TipoMarcacion.ENTRADA) {
+                LocalTime horaOficial = LocalTime.of(8, 0); 
+                LocalTime horaReal = fechaLocal.toLocalTime();
+                if (horaReal.isAfter(horaOficial)) {
+                    retraso = (int) ChronoUnit.MINUTES.between(horaOficial, horaReal);
+                }
+            }
+
+            // 5. Guardar
+            Marcacion m = new Marcacion();
+            m.setEmpleado(empleado);
+            m.setTipo(tipoEnum);
+            m.setFechaHora(fechaLocal);
+            m.setMinutosRetraso(retraso);
+
+            Marcacion guardada = marcacionRepository.save(m);
+            return ResponseEntity.status(HttpStatus.CREATED).body(guardada);
+
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body("Tipo de marcación inválido. Debe ser ENTRADA o SALIDA.");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error al registrar manualmente: " + e.getMessage());
+        }
     }
 
     // =========================================================
