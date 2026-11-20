@@ -7,7 +7,6 @@ import com.asistencia.entity.TipoMarcacion;
 import com.asistencia.repository.EmpleadoRepository;
 import com.asistencia.repository.MarcacionRepository;
 import com.asistencia.repository.TarjetaRepository;
-import com.asistencia.dto.MarcacionRequestDTO;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -77,57 +76,7 @@ public class MarcacionController {
     }
 
     // =========================================================
-    // MARCACIÓN MANUAL (NUEVO ENDPOINT PARA EL FRONTEND)
-    // =========================================================
-    @PostMapping
-    @Transactional
-    public ResponseEntity<?> crearMarcacionManual(@RequestBody MarcacionRequestDTO request) {
-        try {
-            // 1. Buscar empleado
-            Empleado empleado = empleadoRepository.findById(request.getEmpleadoId())
-                    .orElseThrow(() -> new RuntimeException("Empleado no encontrado"));
-
-            // 2. Convertir hora a Colombia
-            ZoneId zonaColombia = ZoneId.of("America/Bogota");
-            LocalDateTime fechaLocal = request.getFechaHora()
-                    .atZoneSameInstant(zonaColombia)
-                    .toLocalDateTime();
-
-            // 3. Convertir el String del frontend ("ENTRADA" o "SALIDA") al Enum de Java
-            TipoMarcacion tipoEnum = TipoMarcacion.valueOf(request.getTipo().toUpperCase());
-
-            // 4. Calcular retraso (Entrada oficial a las 8:00 AM con 10 min de tolerancia)
-            int retraso = 0;
-            if (tipoEnum == TipoMarcacion.ENTRADA) {
-                LocalTime horaOficial = LocalTime.of(8, 0); 
-                LocalTime horaLimite = horaOficial.plusMinutes(10); // Tolerancia
-                LocalTime horaReal = fechaLocal.toLocalTime();
-                
-                if (horaReal.isAfter(horaLimite)) {
-                    retraso = (int) ChronoUnit.MINUTES.between(horaOficial, horaReal);
-                }
-            }
-
-            // 5. Guardar
-            Marcacion m = new Marcacion();
-            m.setEmpleado(empleado);
-            m.setTipo(tipoEnum);
-            m.setFechaHora(fechaLocal);
-            m.setMinutosRetraso(retraso);
-
-            Marcacion guardada = marcacionRepository.save(m);
-            return ResponseEntity.status(HttpStatus.CREATED).body(guardada);
-
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body("Tipo de marcación inválido. Debe ser ENTRADA o SALIDA.");
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error al registrar manualmente: " + e.getMessage());
-        }
-    }
-
-    // =========================================================
-    // MARCACIÓN RFID
+    // MARCACIÓN RFID (CON CÁLCULO DE RETRASO CORREGIDO)
     // =========================================================
     @PostMapping("/rfid")
     @Transactional
@@ -204,14 +153,13 @@ public class MarcacionController {
             tipo = (ultimoTipo == TipoMarcacion.ENTRADA) ? TipoMarcacion.SALIDA : TipoMarcacion.ENTRADA;
         }
 
-        // 8. CALCULAR RETRASO (AQUÍ ESTÁ LA MAGIA)
+        // 8. CALCULAR RETRASO (EL ARREGLO ESTÁ AQUÍ)
         int retrasoCalculado = 0;
         if (tipo == TipoMarcacion.ENTRADA) {
             LocalTime horaOficial = LocalTime.of(8, 0); // ⚠️ CAMBIA AQUÍ LA HORA SI ES DIFERENTE
             LocalTime horaLimite = horaOficial.plusMinutes(10); // ⚠️ CAMBIA LOS 10 MINUTOS SI QUIERES
             LocalTime horaReal = ahora.toLocalTime();
             
-            // Si la hora real pasa el límite de tolerancia, calculamos el retraso real
             if (horaReal.isAfter(horaLimite)) {
                 retrasoCalculado = (int) ChronoUnit.MINUTES.between(horaOficial, horaReal);
             }
@@ -226,7 +174,7 @@ public class MarcacionController {
 
         Marcacion guardada = marcacionRepository.save(marcacion);
 
-        // 10. Respuesta exitosa en formato JSON estricto
+        // 10. Respuesta exitosa
         return ResponseEntity.ok(
                 new RfidResponse(true, "Marcación exitosa", guardada.getTipo().name())
         );
