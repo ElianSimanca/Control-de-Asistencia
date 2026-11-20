@@ -2,6 +2,7 @@ package com.asistencia.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -40,14 +41,18 @@ public class SecurityConfig {
 
             .authorizeHttpRequests(auth -> auth
 
-                // Login público
+                // 1. Login público
                 .requestMatchers("/api/auth/**").permitAll()
 
-                // ESP32 - registrar tarjeta detectada
+                // 2. ESP32 - registrar tarjeta detectada
                 .requestMatchers("/api/cards/detect").permitAll()
 
-                // ESP32 - registrar asistencia
+                // 3. ESP32 - registrar asistencia (RFID)
                 .requestMatchers("/api/marcaciones/rfid").permitAll()
+
+                // 4. FRONTEND REACT - PERMITIR GET Y POST EN MARCACIONES
+                .requestMatchers(HttpMethod.GET, "/api/marcaciones/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/marcaciones").permitAll()
 
                 // Todo lo demás requiere login
                 .anyRequest().authenticated()
