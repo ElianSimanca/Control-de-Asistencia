@@ -33,7 +33,7 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf.disable())
             
-            // CONFIGURACIÓN DE CORS EXPLÍCITA
+            // CONFIGURACIÓN DE CORS
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
             .sessionManagement(session ->
@@ -44,16 +44,21 @@ public class SecurityConfig {
                 // 1. PERMITIR SIEMPRE LAS PETICIONES PREFLIGHT (OPTIONS)
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                // 2. Rutas Públicas
+                // 2. Rutas Públicas (Login y ESP32)
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/cards/detect").permitAll()
                 .requestMatchers("/api/marcaciones/rfid").permitAll()
 
-                // 3. Frontend React
+                // 3. Frontend React (Lectura y Marcación Manual)
                 .requestMatchers(HttpMethod.GET, "/api/marcaciones/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/marcaciones").permitAll()
 
-                // 4. Todo lo demás requiere login
+                // 4. PERMISOS PARA LIMPIAR DATOS (Boton de React)
+                .requestMatchers(HttpMethod.DELETE, "/api/marcaciones/limpiar").permitAll()
+                .requestMatchers(HttpMethod.DELETE, "/api/empleados/limpiar").permitAll()
+                .requestMatchers(HttpMethod.DELETE, "/api/cards/limpiar").permitAll()
+
+                // 5. Cualquier otra petición requiere login
                 .anyRequest().authenticated()
             )
 
@@ -66,7 +71,6 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // Permitir todos los orígenes (o cambia "*" por tu URL de Vercel/Netlify si quieres ser más estricto)
         configuration.setAllowedOrigins(Arrays.asList("*")); 
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
