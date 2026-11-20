@@ -33,7 +33,6 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf.disable())
             
-            // CONFIGURACIÓN DE CORS
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
             .sessionManagement(session ->
@@ -41,24 +40,22 @@ public class SecurityConfig {
             )
 
             .authorizeHttpRequests(auth -> auth
-                // 1. PERMITIR SIEMPRE LAS PETICIONES PREFLIGHT (OPTIONS)
+                // 1. OPTIONS para CORS
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                // 2. Rutas Públicas (Login y ESP32)
+                // 2. Públicas (Login y ESP32)
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/cards/detect").permitAll()
                 .requestMatchers("/api/marcaciones/rfid").permitAll()
 
-                // 3. Frontend React (Lectura y Marcación Manual)
+                // 3. React (Lectura y POST)
                 .requestMatchers(HttpMethod.GET, "/api/marcaciones/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/marcaciones").permitAll()
 
-                // 4. PERMISOS PARA LIMPIAR DATOS (Boton de React)
+                // 4. BORRAR SOLO MARCACIONES (El botón de limpieza)
                 .requestMatchers(HttpMethod.DELETE, "/api/marcaciones/limpiar").permitAll()
-                .requestMatchers(HttpMethod.DELETE, "/api/empleados/limpiar").permitAll()
-                .requestMatchers(HttpMethod.DELETE, "/api/cards/limpiar").permitAll()
 
-                // 5. Cualquier otra petición requiere login
+                // 5. Todo lo demás requiere login
                 .anyRequest().authenticated()
             )
 
@@ -67,7 +64,6 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // BEAN DE CORS (Para que React pueda conectarse sin problema)
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
