@@ -32,20 +32,25 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
+            
+            // CONFIGURACIÓN DE CORS
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+
             .sessionManagement(session ->
                     session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
+
             .authorizeHttpRequests(auth -> auth
-                // 1. OPTIONS para CORS
+                // 1. PERMITIR SIEMPRE LAS PETICIONES PREFLIGHT (OPTIONS)
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                // 2. Públicas (Login y ESP32)
+                // 2. RUTAS PÚBLICAS
+                .requestMatchers("/api/health").permitAll() // <-- NUEVO: Para UptimeRobot
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/cards/detect").permitAll()
                 .requestMatchers("/api/marcaciones/rfid").permitAll()
 
-                // 3. React (Lectura y POST)
+                // 3. FRONTEND REACT (Lectura y Marcación Manual)
                 .requestMatchers(HttpMethod.GET, "/api/marcaciones/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/marcaciones").permitAll()
 
@@ -55,16 +60,18 @@ public class SecurityConfig {
                 // 5. Todo lo demás requiere login
                 .anyRequest().authenticated()
             )
+
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
+    // BEAN DE CORS (Para que React y UptimeRobot puedan conectarse sin problema)
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(Arrays.asList("*")); 
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD")); // Agregado HEAD
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setExposedHeaders(Arrays.asList("Authorization"));
         
