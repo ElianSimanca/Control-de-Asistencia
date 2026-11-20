@@ -7,7 +7,7 @@ import com.asistencia.entity.TipoMarcacion;
 import com.asistencia.repository.EmpleadoRepository;
 import com.asistencia.repository.MarcacionRepository;
 import com.asistencia.repository.TarjetaRepository;
-import com.asistencia.dto.MarcacionRequestDTO; // <-- NUEVO IMPORT
+import com.asistencia.dto.MarcacionRequestDTO;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -20,7 +20,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.time.ZoneId;
-import java.time.temporal.ChronoUnit; // <-- NUEVO IMPORT
+import java.time.temporal.ChronoUnit;
 
 @RestController
 @RequestMapping("/api/marcaciones")
@@ -47,7 +47,6 @@ public class MarcacionController {
     // =========================================================
     // TODAS LAS MARCACIONES
     // =========================================================
-
     @GetMapping
     public List<Marcacion> listarMarcaciones() {
         return marcacionRepository.findAllByOrderByFechaHoraDesc();
@@ -56,39 +55,25 @@ public class MarcacionController {
     // =========================================================
     // MARCACIONES DE UN EMPLEADO
     // =========================================================
-
     @GetMapping("/empleado/{id}")
-    public ResponseEntity<List<Marcacion>> marcacionesEmpleado(
-            @PathVariable Long id) {
-
+    public ResponseEntity<List<Marcacion>> marcacionesEmpleado(@PathVariable Long id) {
         return empleadoRepository.findById(id)
-                .map(empleado ->
-                        ResponseEntity.ok(
-                                marcacionRepository
-                                        .findByEmpleadoOrderByFechaHoraDesc(empleado)
-                        )
-                )
+                .map(empleado -> ResponseEntity.ok(
+                        marcacionRepository.findByEmpleadoOrderByFechaHoraDesc(empleado)
+                ))
                 .orElse(ResponseEntity.notFound().build());
     }
 
     // =========================================================
     // MARCACIONES DE UNA FECHA
     // =========================================================
-
     @GetMapping("/fecha/{fecha}")
-    public List<Marcacion> marcacionesFecha(
-            @PathVariable String fecha) {
-
+    public List<Marcacion> marcacionesFecha(@PathVariable String fecha) {
         LocalDate date = LocalDate.parse(fecha);
-
         LocalDateTime inicio = date.atStartOfDay();
         LocalDateTime fin = date.atTime(LocalTime.MAX);
 
-        return marcacionRepository
-                .findByFechaHoraBetweenOrderByFechaHoraDesc(
-                        inicio,
-                        fin
-                );
+        return marcacionRepository.findByFechaHoraBetweenOrderByFechaHoraDesc(inicio, fin);
     }
 
     // =========================================================
@@ -111,12 +96,14 @@ public class MarcacionController {
             // 3. Convertir el String del frontend ("ENTRADA" o "SALIDA") al Enum de Java
             TipoMarcacion tipoEnum = TipoMarcacion.valueOf(request.getTipo().toUpperCase());
 
-            // 4. Calcular retraso (Ejemplo: Entrada a las 8:00 AM)
+            // 4. Calcular retraso (Entrada oficial a las 8:00 AM con 10 min de tolerancia)
             int retraso = 0;
             if (tipoEnum == TipoMarcacion.ENTRADA) {
                 LocalTime horaOficial = LocalTime.of(8, 0); 
+                LocalTime horaLimite = horaOficial.plusMinutes(10); // Tolerancia
                 LocalTime horaReal = fechaLocal.toLocalTime();
-                if (horaReal.isAfter(horaOficial)) {
+                
+                if (horaReal.isAfter(horaLimite)) {
                     retraso = (int) ChronoUnit.MINUTES.between(horaOficial, horaReal);
                 }
             }
@@ -142,7 +129,6 @@ public class MarcacionController {
     // =========================================================
     // MARCACIÓN RFID
     // =========================================================
-
     @PostMapping("/rfid")
     @Transactional
     public ResponseEntity registrarPorRfid(@RequestBody RfidRequest request) {
@@ -155,22 +141,17 @@ public class MarcacionController {
 
         String uid = request.getUid().trim().toUpperCase();
 
-        // ==========================================
         // 2. Buscar tarjeta o REGISTRARLA SI ES NUEVA
-        // ==========================================
         Tarjeta tarjeta = tarjetaRepository.findByUid(uid).orElse(null);
         
         if (tarjeta == null) {
-            // Guardamos la tarjeta automáticamente en la base de datos
             Tarjeta nuevaTarjeta = new Tarjeta();
             nuevaTarjeta.setUid(uid);
             nuevaTarjeta.setActiva(true);
-            nuevaTarjeta.setEmpleado(null); // Sin asignar
+            nuevaTarjeta.setEmpleado(null); 
             
             tarjetaRepository.save(nuevaTarjeta);
 
-            // Devolvemos success=true para que el ESP32 pite verde
-            // pero el tipo es "REGISTRO", por lo que NO marca asistencia
             return ResponseEntity.ok(
                     new RfidResponse(true, "Tarjeta nueva registrada", "REGISTRO")
             );
@@ -189,13 +170,11 @@ public class MarcacionController {
                     .body(new RfidResponse(false, "Tarjeta sin empleado asignado", null));
         }
 
-        // ---------------------------------------------
-        // HORA ACTUAL CON ZONA HORARIA ESTRICTA
-        // ---------------------------------------------
+        // 5. HORA ACTUAL CON ZONA HORARIA ESTRICTA
         ZoneId zonaColombia = ZoneId.of("America/Bogota");
         LocalDateTime ahora = LocalDateTime.now(zonaColombia);
 
-        // 5. Antiduplicado
+        // 6. Antiduplicado
         var ultimaMarcacion = marcacionRepository.findTopByEmpleadoOrderByFechaHoraDesc(empleado);
 
         if (ultimaMarcacion.isPresent()) {
@@ -208,9 +187,7 @@ public class MarcacionController {
             }
         }
 
-        // ---------------------------------------------
-        // ENTRADA O SALIDA (Evaluando solo el día actual local)
-        // ---------------------------------------------
+        // 7. ENTRADA O SALIDA (Evaluando solo el día actual local)
         LocalDate hoy = LocalDate.now(zonaColombia);
         LocalDateTime inicioDia = hoy.atStartOfDay();
         LocalDateTime finDia = hoy.atTime(LocalTime.MAX);
@@ -224,49 +201,51 @@ public class MarcacionController {
             tipo = TipoMarcacion.ENTRADA;
         } else {
             TipoMarcacion ultimoTipo = ultimaMarcacionHoy.get().getTipo();
-            // Ternario simple: si la última fue ENTRADA, ahora es SALIDA, y viceversa
             tipo = (ultimoTipo == TipoMarcacion.ENTRADA) ? TipoMarcacion.SALIDA : TipoMarcacion.ENTRADA;
         }
 
-        // 6. Crear marcación
+        // 8. CALCULAR RETRASO (AQUÍ ESTÁ LA MAGIA)
+        int retrasoCalculado = 0;
+        if (tipo == TipoMarcacion.ENTRADA) {
+            LocalTime horaOficial = LocalTime.of(8, 0); // ⚠️ CAMBIA AQUÍ LA HORA SI ES DIFERENTE
+            LocalTime horaLimite = horaOficial.plusMinutes(10); // ⚠️ CAMBIA LOS 10 MINUTOS SI QUIERES
+            LocalTime horaReal = ahora.toLocalTime();
+            
+            // Si la hora real pasa el límite de tolerancia, calculamos el retraso real
+            if (horaReal.isAfter(horaLimite)) {
+                retrasoCalculado = (int) ChronoUnit.MINUTES.between(horaOficial, horaReal);
+            }
+        }
+
+        // 9. Crear marcación
         Marcacion marcacion = new Marcacion();
         marcacion.setEmpleado(empleado);
         marcacion.setFechaHora(ahora);
         marcacion.setTipo(tipo);
-        marcacion.setMinutosRetraso(0);
+        marcacion.setMinutosRetraso(retrasoCalculado); // <-- SE GUARDA EL RETRASO REAL
 
         Marcacion guardada = marcacionRepository.save(marcacion);
 
-        // 7. Respuesta exitosa en formato JSON estricto
+        // 10. Respuesta exitosa en formato JSON estricto
         return ResponseEntity.ok(
                 new RfidResponse(true, "Marcación exitosa", guardada.getTipo().name())
         );
     }
 
     // =========================================================
-    // REQUEST RFID
+    // REQUEST Y RESPONSE RFID
     // =========================================================
-
     public static class RfidRequest {
-
         private String uid;
 
-        public String getUid() {
-            return uid;
-        }
-
-        public void setUid(String uid) {
-            this.uid = uid;
-        }
+        public String getUid() { return uid; }
+        public void setUid(String uid) { this.uid = uid; }
     }
 
-    // =========================================================
-    // RESPUESTA ESTANDARIZADA JSON PARA EL ESP32
-    // =========================================================
     public static class RfidResponse {
         private boolean success;
         private String mensaje;
-        private String tipoMarcacion; // Puede ser null en caso de error
+        private String tipoMarcacion;
 
         public RfidResponse(boolean success, String mensaje, String tipoMarcacion) {
             this.success = success;
