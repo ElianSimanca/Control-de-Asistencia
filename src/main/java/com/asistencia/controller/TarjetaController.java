@@ -322,4 +322,11 @@ public class TarjetaController {
             return asignada;
         }
     }
+        @DeleteMapping("/limpiar")
+    public ResponseEntity<?> limpiarTarjetas() {
+        // Desasociamos las tarjetas de los empleados primero
+        // O simplemente las borramos si no hay restricciones
+        tarjetaRepository.deleteAll();
+        return ResponseEntity.ok().build();
+    }
 }
