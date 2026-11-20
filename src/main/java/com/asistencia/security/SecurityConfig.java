@@ -32,13 +32,10 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
-            
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-
             .sessionManagement(session ->
                     session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
-
             .authorizeHttpRequests(auth -> auth
                 // 1. OPTIONS para CORS
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
@@ -52,13 +49,12 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/marcaciones/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/marcaciones").permitAll()
 
-                // 4. BORRAR SOLO MARCACIONES (El botón de limpieza)
+                // 4. BORRAR SOLO MARCACIONES
                 .requestMatchers(HttpMethod.DELETE, "/api/marcaciones/limpiar").permitAll()
 
                 // 5. Todo lo demás requiere login
                 .anyRequest().authenticated()
             )
-
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
