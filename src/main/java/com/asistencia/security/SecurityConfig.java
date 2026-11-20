@@ -9,6 +9,10 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import java.util.Arrays;
 
 @Configuration
 public class SecurityConfig {
@@ -25,44 +29,51 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(
-            HttpSecurity http) throws Exception {
-
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
-
-            .cors(cors -> {})
+            
+            // CONFIGURACIÓN DE CORS EXPLÍCITA
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
             .sessionManagement(session ->
-                    session.sessionCreationPolicy(
-                            SessionCreationPolicy.STATELESS
-                    )
+                    session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
 
             .authorizeHttpRequests(auth -> auth
+                // 1. PERMITIR SIEMPRE LAS PETICIONES PREFLIGHT (OPTIONS)
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                // 1. Login público
+                // 2. Rutas Públicas
                 .requestMatchers("/api/auth/**").permitAll()
-
-                // 2. ESP32 - registrar tarjeta detectada
                 .requestMatchers("/api/cards/detect").permitAll()
-
-                // 3. ESP32 - registrar asistencia (RFID)
                 .requestMatchers("/api/marcaciones/rfid").permitAll()
 
-                // 4. FRONTEND REACT - PERMITIR GET Y POST EN MARCACIONES
+                // 3. Frontend React
                 .requestMatchers(HttpMethod.GET, "/api/marcaciones/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/marcaciones").permitAll()
 
-                // Todo lo demás requiere login
+                // 4. Todo lo demás requiere login
                 .anyRequest().authenticated()
             )
 
-            .addFilterBefore(
-                    jwtAuthenticationFilter,
-                    UsernamePasswordAuthenticationFilter.class
-            );
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    // BEAN DE CORS (Para que React pueda conectarse sin problema)
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        // Permitir todos los orígenes (o cambia "*" por tu URL de Vercel/Netlify si quieres ser más estricto)
+        configuration.setAllowedOrigins(Arrays.asList("*")); 
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setExposedHeaders(Arrays.asList("Authorization"));
+        
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
     }
 }
